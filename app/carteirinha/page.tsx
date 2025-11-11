@@ -223,7 +223,7 @@ const PrintCard: React.FC<PrintCardProps> = ({
         <div className="absolute bottom-6">
           <div className={`px-4 py-1.5 rounded-full border ${borderColor}`}>
             <p className={`${isDarkTheme ? 'text-white/80' : 'text-gray-700'} text-[10px] font-medium tracking-wider uppercase`}>
-              Cannabis Medicinal
+              EXPO Cannabis
             </p>
           </div>
         </div>
@@ -450,7 +450,7 @@ const MedicalCard: React.FC<CardProps> = ({
           <div className="absolute bottom-6">
             <div className={`px-4 py-1.5 rounded-full border ${borderColor}`}>
               <p className={`${isDarkTheme ? 'text-white/80' : 'text-gray-700'} text-[10px] font-medium tracking-wider uppercase`}>
-                Cannabis Medicinal
+                EXPO Cannabis
               </p>
             </div>
           </div>
