@@ -1,7 +1,10 @@
+// ARQUIVO: components/3d/Card3D.tsx
+// COLE ISSO INTEIRO SUBSTITUINDO O SEU ARQUIVO
+
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // Verifique se o 'useState' e 'useEffect' estão aqui
 
 interface Card3DProps {
   name?: string;
@@ -22,6 +25,9 @@ export default function Card3D({
 }: Card3DProps) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
+  // CORREÇÃO 1: State para o ID aleatório
+  const [registroId, setRegistroId] = useState('');
+
   const sizes = {
     sm: { width: "280px", height: "440px", scale: 0.8 },
     md: { width: "380px", height: "600px", scale: 1 },
@@ -42,6 +48,12 @@ export default function Card3D({
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [interactive]);
+
+  // CORREÇÃO 1 (Continuação): Gerar o ID aleatório apenas no cliente
+  useEffect(() => {
+    // Isso garante que o código só rode no browser, evitando erro de hidratação
+    setRegistroId(Math.random().toString(36).substr(2, 9).toUpperCase());
+  }, []); // O [] vazio faz rodar só uma vez quando o componente montar
 
   return (
     <motion.div
@@ -69,7 +81,8 @@ export default function Card3D({
       >
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] bg-repeat" />
+          {/* CORREÇÃO 2: O SVG foi movido para um arquivo externo */}
+          <div className="absolute inset-0 bg-[url('/pattern.svg')] bg-repeat" />
         </div>
         
         {/* Holographic Overlay */}
@@ -138,7 +151,8 @@ export default function Card3D({
               </div>
               <div>
                 <p className="text-xs opacity-60 uppercase">Registro</p>
-                <p className="font-mono text-sm">GC{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+                {/* CORREÇÃO 1 (Final): Usar o state do ID aleatório aqui */}
+                <p className="font-mono text-sm">GC{registroId}</p>
               </div>
             </div>
           </div>
