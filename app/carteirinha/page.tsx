@@ -223,7 +223,7 @@ const PrintCard: React.FC<PrintCardProps> = ({
         <div className="absolute bottom-6">
           <div className={`px-4 py-1.5 rounded-full border ${borderColor}`}>
             <p className={`${isDarkTheme ? 'text-white/80' : 'text-gray-700'} text-[10px] font-medium tracking-wider uppercase`}>
-              EXPO Cannabis
+              Cannabis Medicinal
             </p>
           </div>
         </div>
@@ -270,6 +270,7 @@ const PrintCard: React.FC<PrintCardProps> = ({
             <div className="flex flex-col">
               <div className={`w-[75px] h-[90px] rounded-lg overflow-hidden border ${isDarkTheme ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/25' : 'bg-gray-50 border-gray-300'} shadow-inner`}>
                 {selectedImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={selectedImage} alt="Foto" className="w-full h-full object-cover" />
                 ) : (
                   <div className={`w-full h-full flex items-center justify-center ${isDarkTheme ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -287,7 +288,7 @@ const PrintCard: React.FC<PrintCardProps> = ({
               </p>
               {formData.nickname && (
                 <p className={`text-[10px] mt-0.5 italic ${textColorSecondary}`}>
-                  "{formData.nickname}"
+                  {`"${formData.nickname}"`}
                 </p>
               )}
             </div>
@@ -355,7 +356,7 @@ const PrintCard: React.FC<PrintCardProps> = ({
               </div>
               <div className="text-right">
                 <p className={`text-[6px] uppercase tracking-wider ${textColorMuted}`}>
-                  www.greencardclub.com
+                  greencard.club
                 </p>
               </div>
             </div>
@@ -498,6 +499,7 @@ const MedicalCard: React.FC<CardProps> = ({
                 <div className="flex flex-col">
                   <div className={`w-[75px] h-[90px] rounded-lg overflow-hidden border ${isDarkTheme ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/25' : 'bg-gray-50 border-gray-300'} shadow-inner`}>
                     {selectedImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={selectedImage} alt="Foto" className="w-full h-full object-cover" />
                     ) : (
                       <div className={`w-full h-full flex items-center justify-center ${isDarkTheme ? 'bg-white/10' : 'bg-gray-100'}`}>
@@ -515,7 +517,7 @@ const MedicalCard: React.FC<CardProps> = ({
                   </p>
                   {formData.nickname && (
                     <p className={`text-[10px] mt-0.5 italic ${textColorSecondary}`}>
-                      "{formData.nickname}"
+                      {`"${formData.nickname}"`}
                     </p>
                   )}
                 </div>
@@ -1325,6 +1327,7 @@ export default function CarterinhaPage() {
                     <div className="border-2 border-dashed border-greencard-tertiary rounded-xl p-8 hover:border-greencard-primary transition-colors">
                       {selectedImage ? (
                         <div className="text-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img 
                             src={selectedImage} 
                             alt="Preview" 
