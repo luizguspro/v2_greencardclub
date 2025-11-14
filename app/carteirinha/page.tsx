@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { motion } from "framer-motion";
@@ -15,7 +15,7 @@ interface FormData {
   name: string;
   nickname?: string;
   cpf: string;
-  birthDate: string;
+  birthDate: string; // Este campo será mantido como YYYY-MM-DD internamente
   nationality: string;
   phone: string;
   email: string;
@@ -116,7 +116,8 @@ const validateEmail = (email: string): boolean => {
 };
 
 const calculateAge = (birthDateString: string): string => {
-  if (!birthDateString) return "--";
+  // Formato esperado: YYYY-MM-DD
+  if (!birthDateString || !/^\d{4}-\d{2}-\d{2}$/.test(birthDateString)) return "--";
   const [year, month, day] = birthDateString.split('-').map(Number);
   const birthDate = new Date(year, month - 1, day);
   const today = new Date();
@@ -126,6 +127,14 @@ const calculateAge = (birthDateString: string): string => {
     age--;
   }
   return age.toString();
+};
+
+// NOVA FUNÇÃO UTILITÁRIA PARA EXIBIÇÃO
+const formatDateForDisplay = (dateString: string): string => {
+  if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return "---";
+  const [year, month, day] = dateString.split('-');
+  if (!day || !month || !year) return "---";
+  return `${day}/${month}/${year}`;
 };
 
 const generateCardNumber = (): string => {
@@ -367,7 +376,7 @@ export default function CarterinhaPage() {
     name: "",
     nickname: "",
     cpf: "",
-    birthDate: "",
+    birthDate: "", // Mantém o formato YYYY-MM-DD
     nationality: "brasileiro",
     state: "",
     phone: "",
@@ -382,10 +391,39 @@ export default function CarterinhaPage() {
     crmNumber: ""
   });
 
+  // === NOVOS ESTADOS PARA DATA DE NASCIMENTO ===
+  const [birthDay, setBirthDay] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  // ==========================================
+
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
   const hiddenCardRef = useRef<HTMLDivElement>(null); // Ref para o cartão oculto
   const cardNumber = useMemo(() => generateCardNumber(), []);
+
+  // === NOVOS ARRAYS PARA DATA DE NASCIMENTO ===
+  const days = useMemo(() => Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')), []);
+  const months = useMemo(() => [
+    { value: "01", label: "Janeiro" },
+    { value: "02", label: "Fevereiro" },
+    { value: "03", label: "Março" },
+    { value: "04", label: "Abril" },
+    { value: "05", label: "Maio" },
+    { value: "06", label: "Junho" },
+    { value: "07", label: "Julho" },
+    { value: "08", label: "Agosto" },
+    { value: "09", label: "Setembro" },
+    { value: "10", label: "Outubro" },
+    { value: "11", label: "Novembro" },
+    { value: "12", label: "Dezembro" },
+  ], []);
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    // Gera uma lista de 100 anos para trás
+    return Array.from({ length: 100 }, (_, i) => String(currentYear - i));
+  }, []);
+  // ============================================
 
   const steps = [
     { id: 1, name: "Dados Pessoais", icon: User },
@@ -401,6 +439,7 @@ export default function CarterinhaPage() {
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Nome é obrigatório";
       if (!validateCPF(formData.cpf)) newErrors.cpf = "CPF inválido";
+      // A validação continua a mesma, pois formData.birthDate só é preenchido se os 3 campos estiverem ok
       if (!formData.birthDate) newErrors.birthDate = "Data de nascimento é obrigatória";
       if (!formData.nationality) newErrors.nationality = "Nacionalidade é obrigatória";
       if (!formData.phone.trim()) newErrors.phone = "Telefone é obrigatório";
@@ -442,6 +481,36 @@ export default function CarterinhaPage() {
       setErrors({ ...errors, [field]: '' });
     }
   };
+
+  // === NOVO HANDLER PARA DATA DE NASCIMENTO ===
+  const handleBirthDateChange = (part: 'day' | 'month' | 'year', value: string) => {
+    let newDay = birthDay;
+    let newMonth = birthMonth;
+    let newYear = birthYear;
+
+    if (part === 'day') {
+      setBirthDay(value);
+      newDay = value;
+    } else if (part === 'month') {
+      setBirthMonth(value);
+      newMonth = value;
+    } else if (part === 'year') {
+      setBirthYear(value);
+      newYear = value;
+    }
+
+    // Tenta montar a data YYYY-MM-DD
+    if (newDay && newMonth && newYear) {
+      const dateString = `${newYear}-${newMonth}-${newDay}`;
+      
+      // Atualiza o formData principal
+      handleInputChange('birthDate', dateString);
+    } else {
+      // Se qualquer parte estiver faltando, limpa a data no formData
+      handleInputChange('birthDate', '');
+    }
+  };
+  // ============================================
 
   const handleImageUpload = (file: File) => {
     if (file.size > 5 * 1024 * 1024) {
@@ -753,22 +822,61 @@ export default function CarterinhaPage() {
                   {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
-                      Data de nascimento *
-                    </label>
-                    <input
-                      type="date"
+                {/* ============================================================== */}
+                {/* === BLOCO DA DATA DE NASCIMENTO SUBSTITUÍDO === */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
+                    Data de nascimento *
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* DIA */}
+                    <select
+                      value={birthDay}
+                      onChange={(e) => handleBirthDateChange('day', e.target.value)}
                       className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
                         errors.birthDate ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
                       }`}
-                      value={formData.birthDate}
-                      onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                    />
-                    {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate}</p>}
-                  </div>
+                    >
+                      <option value="">Dia</option>
+                      {days.map(day => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
+                    
+                    {/* MÊS */}
+                    <select
+                      value={birthMonth}
+                      onChange={(e) => handleBirthDateChange('month', e.target.value)}
+                      className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
+                        errors.birthDate ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
+                      }`}
+                    >
+                      <option value="">Mês</option>
+                      {months.map(month => (
+                        <option key={month.value} value={month.value}>{month.label}</option>
+                      ))}
+                    </select>
 
+                    {/* ANO */}
+                    <select
+                      value={birthYear}
+                      onChange={(e) => handleBirthDateChange('year', e.target.value)}
+                      className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
+                        errors.birthDate ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
+                      }`}
+                    >
+                      <option value="">Ano</option>
+                      {years.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {errors.birthDate && <p className="text-red-500 text-xs mt-1">{errors.birthDate}</p>}
+                </div>
+                {/* ============================================================== */}
+
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
                       Nacionalidade *
@@ -803,37 +911,39 @@ export default function CarterinhaPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
-                    Telefone *
-                  </label>
-                  <input
-                    type="tel"
-                    className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
-                      errors.phone ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
-                    }`}
-                    placeholder="(00) 00000-0000"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    maxLength={15}
-                  />
-                  {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
+                      Telefone *
+                    </label>
+                    <input
+                      type="tel"
+                      className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
+                        errors.phone ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
+                      }`}
+                      placeholder="(00) 00000-0000"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      maxLength={15}
+                    />
+                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                  </div>
 
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
-                    E-mail *
-                  </label>
-                  <input
-                    type="email"
-                    className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
-                      errors.email ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
-                    }`}
-                    placeholder="seu@email.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                  />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-greencard-primary mb-1 sm:mb-2">
+                      E-mail *
+                    </label>
+                    <input
+                      type="email"
+                      className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:outline-none transition-colors ${
+                        errors.email ? 'border-red-500 focus:border-red-600' : 'border-gray-200 focus:border-greencard-primary'
+                      }`}
+                      placeholder="seu@email.com"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                    />
+                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -1064,7 +1174,10 @@ export default function CarterinhaPage() {
                       <p><span className="font-semibold">Nome:</span> {formData.name || "---"}</p>
                       {formData.nickname && <p><span className="font-semibold">Apelido:</span> {formData.nickname}</p>}
                       <p><span className="font-semibold">CPF:</span> {formData.cpf || "---"}</p>
-                      <p><span className="font-semibold">Nascimento:</span> {formData.birthDate || "---"}</p>
+                      
+                      {/* === CAMPO DE NASCIMENTO ATUALIZADO === */}
+                      <p><span className="font-semibold">Nascimento:</span> {formatDateForDisplay(formData.birthDate)}</p>
+                      
                       <p><span className="font-semibold">Nacionalidade:</span> {formData.nationality === 'brasileiro' ? 'Brasileiro' : formData.nationality || "---"}</p>
                       {formData.state && <p><span className="font-semibold">Estado:</span> {formData.state}</p>}
                       <p><span className="font-semibold">Telefone:</span> {formData.phone || "---"}</p>
