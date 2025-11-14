@@ -139,7 +139,7 @@ export default function Home() {
                 <div className="w-32 h-40 bg-white/20 rounded-lg mb-4"></div>
                 <p className="font-bold">SEU NOME AQUI</p>
                 <p className="text-sm opacity-80">CPF: ***.***.***-**</p>
-                <p className="text-sm opacity-80">Válido até: 12/2025</p>
+                <p className="text-sm opacity-80">Válido até: 12/2026</p>
               </div>
             </motion.div>
           </div>

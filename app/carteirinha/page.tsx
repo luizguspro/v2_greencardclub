@@ -3,9 +3,8 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
-import QRCode from 'qrcode';
 import { motion } from "framer-motion";
-import { ArrowLeft, User, Camera, Check, FileText, Download, Eye, RefreshCw, Shield, Fingerprint, AlertCircle, Globe, Printer } from "lucide-react";
+import { ArrowLeft, User, Camera, Check, FileText, Download, Eye, Shield, AlertCircle, Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,51 +34,15 @@ interface FormErrors {
   [key: string]: string;
 }
 
-interface CardTheme {
-  name: string;
-  frontBg: string;
-  backBg: string;
-  textColor: string;
-  accentColor: string;
-  pattern?: string;
-}
-
-// =================== CONFIGURAÇÕES DO CARTÃO COM NOVOS TEMAS ===================
-const CARD_THEMES: CardTheme[] = [
-  {
-    name: "Cannabis Medical",
-    frontBg: "from-[#0a5a42] to-[#063d2b]",
-    backBg: "linear-gradient(135deg, #0a5a42 0%, #084734 50%, #063d2b 100%)",
-    textColor: "text-white",
-    accentColor: "emerald"
-  },
-  {
-    name: "Menta",
-    frontBg: "from-[#ceedb2] via-[#c3e4a6] to-[#c8eaab]",
-    backBg: "linear-gradient(135deg, #ceedb2 0%, #c3e4a6 50%, #c8eaab 100%)",
-    textColor: "text-gray-800",
-    accentColor: "green"
-  },
-  {
-    name: "White",
-    frontBg: "from-[#fcfcfc] via-[#fbfbfb] to-[#ffffff]",
-    backBg: "linear-gradient(135deg, #fcfcfc 0%, #fbfbfb 50%, #ffffff 100%)",
-    textColor: "text-gray-800",
-    accentColor: "gray"
-  }
-];
-
-// Configurações para impressora Zebra ZC300
+// =================== CONFIGURAÇÕES DO CARTÃO ===================
 const CARD_PRINT_CONFIG = {
-  // Tamanho padrão CR80 (cartão de crédito)
   widthMM: 85.6,
   heightMM: 54,
-  widthPX: 1013, // 300 DPI
-  heightPX: 638,  // 300 DPI
+  widthPX: 1013,
+  heightPX: 638,
   dpi: 300
 };
 
-// Configuração modular dos campos do cartão
 const CARD_FIELDS = {
   basicInfo: ['name', 'nickname', 'age', 'cardNumber', 'validity', 'nationality'],
   medicalInfo: ['medicalCondition', 'bloodType', 'allergies'],
@@ -90,7 +53,6 @@ const CARD_FIELDS = {
   logo: true
 };
 
-// Lista de estados brasileiros
 const ESTADOS_BRASIL = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
@@ -179,63 +141,38 @@ const generatePassword = (): string => {
   return password;
 };
 
-// =================== COMPONENTE DO CARTÃO PARA IMPRESSÃO (SEM TRANSFORMAÇÕES) ===================
-interface PrintCardProps {
+// =================== COMPONENTE DO CARTÃO CORRIGIDO ===================
+interface CardProps {
   formData: FormData;
   selectedImage: string | null;
-  theme: CardTheme;
   cardNumber: string;
-  side: 'front' | 'back';
+  forExport?: boolean;
 }
 
-const PrintCard: React.FC<PrintCardProps> = ({ 
+const MedicalCard: React.FC<CardProps> = ({ 
   formData, 
   selectedImage, 
-  theme, 
   cardNumber,
-  side
+  forExport = false
 }) => {
   const qrCodeValue = `https://greencard.club/verify/${cardNumber}`;
-  const isDarkTheme = theme.name === "Cannabis Medical";
-  const textColorPrimary = isDarkTheme ? "text-white" : "text-gray-800";
-  const textColorSecondary = isDarkTheme ? "text-white/70" : "text-gray-600";
-  const textColorMuted = isDarkTheme ? "text-white/40" : "text-gray-400";
-  const borderColor = isDarkTheme ? "border-white/30" : "border-gray-300";
-  const bgAccent = isDarkTheme ? "bg-white" : "bg-gray-100";
+  const bgColor = "#105740";
+  
+  // Estilos inline para exportação (mais confiável)
+  const cardStyle = forExport ? {
+    width: '350px',
+    height: '220px',
+    borderRadius: '16px',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+    background: bgColor,
+    position: 'relative' as const
+  } : {};
 
-  if (side === 'front') {
-    return (
-      <div
-        className={`w-[350px] h-[220px] bg-gradient-to-br ${theme.frontBg} rounded-2xl shadow-2xl flex flex-col items-center justify-center`}
-      >
-        {CARD_FIELDS.logo && (
-          <div className="mb-8">
-            <Image
-              src="/frente.svg"
-              alt="Greencard Club"
-              width={180}
-              height={70}
-              className={isDarkTheme ? "brightness-0 invert opacity-90" : "opacity-80"}
-            />
-          </div>
-        )}
-        
-        <div className="absolute bottom-6">
-          <div className={`px-4 py-1.5 rounded-full border ${borderColor}`}>
-            <p className={`${isDarkTheme ? 'text-white/80' : 'text-gray-700'} text-[10px] font-medium tracking-wider uppercase`}>
-              EXPO Cannabis
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // VERSO DO CARTÃO (SEM TRANSFORMAÇÕES 3D)
   return (
-    <div
-      className="w-[350px] h-[220px] rounded-2xl shadow-2xl overflow-hidden"
-      style={{ background: theme.backBg }}
+    <div 
+      className={!forExport ? "w-[350px] h-[220px] rounded-2xl shadow-2xl overflow-hidden relative" : ""}
+      style={forExport ? cardStyle : { background: bgColor, position: 'relative' }}
     >
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="w-full h-full" 
@@ -251,30 +188,33 @@ const PrintCard: React.FC<PrintCardProps> = ({
         />
       </div>
 
-      <div className="relative z-10 p-4 h-full flex flex-col">
+      <div className="relative z-10 p-4 h-full flex flex-col" style={forExport ? { padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' } : {}}>
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
-            <Shield className={`w-4 h-4 ${isDarkTheme ? 'text-white/60' : 'text-gray-500'}`} />
-            <span className={`text-[10px] font-semibold tracking-wider uppercase ${isDarkTheme ? 'text-white/80' : 'text-gray-700'}`}>
-              GREENCARD
+            <Shield className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.6)' }} />
+            <span className="text-[10px] font-semibold tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              GREENCARDCLUB
             </span>
           </div>
           <div className="text-right">
-            <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Registro</p>
-            <p className={`text-[9px] font-mono ${isDarkTheme ? 'text-white/70' : 'text-gray-600'}`}>{cardNumber}</p>
+            <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Registro</p>
+            <p className="text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.7)' }}>{cardNumber}</p>
           </div>
         </div>
 
         <div className="flex gap-3 flex-1">
           {CARD_FIELDS.photo && (
             <div className="flex flex-col">
-              <div className={`w-[75px] h-[90px] rounded-lg overflow-hidden border ${isDarkTheme ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/25' : 'bg-gray-50 border-gray-300'} shadow-inner`}>
+              <div className="w-[75px] h-[90px] rounded-lg overflow-hidden border shadow-inner" 
+                style={{ 
+                  background: 'linear-gradient(to bottom right, rgba(255,255,255,0.15), rgba(255,255,255,0.05))',
+                  borderColor: 'rgba(255,255,255,0.25)'
+                }}>
                 {selectedImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={selectedImage} alt="Foto" className="w-full h-full object-cover" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${isDarkTheme ? 'bg-white/10' : 'bg-gray-100'}`}>
-                    <User className={`w-7 h-7 ${isDarkTheme ? 'text-white/25' : 'text-gray-400'}`} />
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                    <User className="w-7 h-7" style={{ color: 'rgba(255,255,255,0.25)' }} />
                   </div>
                 )}
               </div>
@@ -283,11 +223,11 @@ const PrintCard: React.FC<PrintCardProps> = ({
 
           <div className="flex-1 flex flex-col">
             <div className="mb-2.5">
-              <p className={`font-bold text-[15px] leading-tight tracking-wide ${textColorPrimary}`}>
+              <p className="font-bold text-[15px] leading-tight tracking-wide" style={{ color: 'white' }}>
                 {formData.name.toUpperCase() || "NOME DO PACIENTE"}
               </p>
               {formData.nickname && (
-                <p className={`text-[10px] mt-0.5 italic ${textColorSecondary}`}>
+                <p className="text-[10px] mt-0.5 italic" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {`"${formData.nickname}"`}
                 </p>
               )}
@@ -295,38 +235,38 @@ const PrintCard: React.FC<PrintCardProps> = ({
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
               <div>
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Idade</p>
-                <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
+                <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Idade</p>
+                <p className="font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {calculateAge(formData.birthDate)} anos
                 </p>
               </div>
               
               <div>
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Nacionalidade</p>
-                <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
+                <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Nacionalidade</p>
+                <p className="font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {formData.nationality === 'brasileiro' ? 'Brasileiro' : formData.nationality || 'Brasileiro'}
                 </p>
               </div>
               
               {formData.state && (
                 <div>
-                  <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>UF</p>
-                  <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
+                  <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>UF</p>
+                  <p className="font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
                     {formData.state}
                   </p>
                 </div>
               )}
               
               <div>
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Validade</p>
-                <p className={`text-[11px] font-bold ${textColorPrimary}`}>12/2025</p>
+                <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Validade</p>
+                <p className="text-[11px] font-bold" style={{ color: 'white' }}>12/2026</p>
               </div>
             </div>
 
             {formData.bloodType && (
               <div className="mt-2">
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Tipo Sanguíneo</p>
-                <p className={`font-bold text-[10px] ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
+                <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Tipo Sanguíneo</p>
+                <p className="font-bold text-[10px]" style={{ color: 'rgba(255,255,255,0.9)' }}>
                   {formData.bloodType}
                 </p>
               </div>
@@ -334,8 +274,8 @@ const PrintCard: React.FC<PrintCardProps> = ({
 
             {formData.medicalCondition && (
               <div className="mt-2">
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Condição Autorizada</p>
-                <p className={`text-[10px] font-semibold ${isDarkTheme ? 'text-emerald-300/90' : 'text-green-600'}`}>
+                <p className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>Condição Autorizada</p>
+                <p className="text-[10px] font-semibold" style={{ color: 'rgba(110, 231, 183, 0.9)' }}>
                   {formData.medicalCondition}
                 </p>
               </div>
@@ -344,272 +284,43 @@ const PrintCard: React.FC<PrintCardProps> = ({
 
           {CARD_FIELDS.qrCode && (
             <div className="flex flex-col items-end justify-between">
-              <div className={`p-1 ${bgAccent} rounded-md shadow-sm`}>
+              <div className="p-1 rounded-md shadow-sm" style={{ backgroundColor: 'white' }}>
                 <QRCodeCanvas
                   value={qrCodeValue}
                   size={44}
-                  bgColor={isDarkTheme ? "#ffffff" : "#f9f9f9"}
-                  fgColor={isDarkTheme ? "#063d2b" : "#333333"}
+                  bgColor="#ffffff"
+                  fgColor="#063d2b"
                   level={"M"}
                   includeMargin={false}
                 />
               </div>
               <div className="text-right">
-                <p className={`text-[6px] uppercase tracking-wider ${textColorMuted}`}>
-                  greencard.club
+                <p className="text-[6px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  greencardcannabico
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        <div className={`flex justify-between items-center pt-1.5 mt-1 border-t ${isDarkTheme ? 'border-white/5' : 'border-gray-200'}`}>
+        <div className="flex justify-between items-center pt-1.5 mt-1 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="flex items-center gap-2">
-            <Image
-              src="/planta.svg"
-              alt="Cannabis"
-              width={14}
-              height={14}
-              className={isDarkTheme ? "opacity-30 brightness-0 invert" : "opacity-40"}
-            />
-            <p className={`text-[6px] uppercase tracking-wider ${textColorMuted}`}>
+            {!forExport && (
+              <Image
+                src="/planta.svg"
+                alt="Cannabis"
+                width={14}
+                height={14}
+                className="opacity-30 brightness-0 invert"
+              />
+            )}
+            <p className="text-[6px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>
               Documento Digital
             </p>
           </div>
-          <p className={`text-[6px] ${textColorMuted}`}>© 2025</p>
+          <p className="text-[6px]" style={{ color: 'rgba(255,255,255,0.4)' }}>© 2025</p>
         </div>
       </div>
-    </div>
-  );
-};
-
-// =================== COMPONENTE DO CARTÃO ANIMADO ===================
-interface CardProps {
-  formData: FormData;
-  selectedImage: string | null;
-  theme: CardTheme;
-  isFlipped: boolean;
-  cardRef: React.RefObject<HTMLDivElement>;
-  cardFrontRef?: React.RefObject<HTMLDivElement>;
-  cardNumber: string;
-}
-
-const MedicalCard: React.FC<CardProps> = ({ 
-  formData, 
-  selectedImage, 
-  theme, 
-  isFlipped, 
-  cardRef,
-  cardFrontRef,
-  cardNumber
-}) => {
-  const qrCodeValue = `https://greencard.club/verify/${cardNumber}`;
-  
-  // Ajusta cores do texto baseado no tema
-  const isDarkTheme = theme.name === "Cannabis Medical";
-  const textColorPrimary = isDarkTheme ? "text-white" : "text-gray-800";
-  const textColorSecondary = isDarkTheme ? "text-white/70" : "text-gray-600";
-  const textColorMuted = isDarkTheme ? "text-white/40" : "text-gray-400";
-  const borderColor = isDarkTheme ? "border-white/30" : "border-gray-300";
-  const bgAccent = isDarkTheme ? "bg-white" : "bg-gray-100";
-
-  // Renderização normal com animação
-  return (
-    <div 
-      className="relative"
-      style={{ 
-        width: '350px',
-        height: '220px',
-        perspective: '1000px' 
-      }}
-    >
-      <motion.div
-        className="relative w-full h-full"
-        style={{ transformStyle: 'preserve-3d' }}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        {/* FRENTE DO CARTÃO */}
-        <div
-          ref={cardFrontRef}
-          className={`absolute w-full h-full bg-gradient-to-br ${theme.frontBg} rounded-2xl shadow-2xl flex flex-col items-center justify-center`}
-          style={{ backfaceVisibility: 'hidden' }}
-        >
-          {CARD_FIELDS.logo && (
-            <div className="mb-8">
-              <Image
-                src="/frente.svg"
-                alt="Greencard Club"
-                width={180}
-                height={70}
-                className={isDarkTheme ? "brightness-0 invert opacity-90" : "opacity-80"}
-              />
-            </div>
-          )}
-          
-          <div className="absolute bottom-6">
-            <div className={`px-4 py-1.5 rounded-full border ${borderColor}`}>
-              <p className={`${isDarkTheme ? 'text-white/80' : 'text-gray-700'} text-[10px] font-medium tracking-wider uppercase`}>
-                EXPO Cannabis
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* VERSO DO CARTÃO */}
-        <div
-          ref={cardRef}
-          className="absolute w-full h-full rounded-2xl shadow-2xl overflow-hidden"
-          style={{ 
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-            background: theme.backBg
-          }}
-        >
-          <div className="absolute inset-0 opacity-[0.02]">
-            <div className="w-full h-full" 
-              style={{
-                backgroundImage: `repeating-linear-gradient(
-                  45deg,
-                  transparent,
-                  transparent 40px,
-                  rgba(0,0,0,.02) 40px,
-                  rgba(0,0,0,.02) 80px
-                )`
-              }}
-            />
-          </div>
-
-          <div className="relative z-10 p-4 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-2">
-                <Shield className={`w-4 h-4 ${isDarkTheme ? 'text-white/60' : 'text-gray-500'}`} />
-                <span className={`text-[10px] font-semibold tracking-wider uppercase ${isDarkTheme ? 'text-white/80' : 'text-gray-700'}`}>
-                  GREENCARD
-                </span>
-              </div>
-              <div className="text-right">
-                <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Registro</p>
-                <p className={`text-[9px] font-mono ${isDarkTheme ? 'text-white/70' : 'text-gray-600'}`}>{cardNumber}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 flex-1">
-              {CARD_FIELDS.photo && (
-                <div className="flex flex-col">
-                  <div className={`w-[75px] h-[90px] rounded-lg overflow-hidden border ${isDarkTheme ? 'bg-gradient-to-br from-white/15 to-white/5 border-white/25' : 'bg-gray-50 border-gray-300'} shadow-inner`}>
-                    {selectedImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={selectedImage} alt="Foto" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className={`w-full h-full flex items-center justify-center ${isDarkTheme ? 'bg-white/10' : 'bg-gray-100'}`}>
-                        <User className={`w-7 h-7 ${isDarkTheme ? 'text-white/25' : 'text-gray-400'}`} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex-1 flex flex-col">
-                <div className="mb-2.5">
-                  <p className={`font-bold text-[15px] leading-tight tracking-wide ${textColorPrimary}`}>
-                    {formData.name.toUpperCase() || "NOME DO PACIENTE"}
-                  </p>
-                  {formData.nickname && (
-                    <p className={`text-[10px] mt-0.5 italic ${textColorSecondary}`}>
-                      {`"${formData.nickname}"`}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px]">
-                  <div>
-                    <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Idade</p>
-                    <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
-                      {calculateAge(formData.birthDate)} anos
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Nacionalidade</p>
-                    <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
-                      {formData.nationality === 'brasileiro' ? 'Brasileiro' : formData.nationality || 'Brasileiro'}
-                    </p>
-                  </div>
-                  
-                  {formData.state && (
-                    <div>
-                      <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>UF</p>
-                      <p className={`font-medium ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
-                        {formData.state}
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Validade</p>
-                    <p className={`text-[11px] font-bold ${textColorPrimary}`}>12/2025</p>
-                  </div>
-                </div>
-
-                {formData.bloodType && (
-                  <div className="mt-2">
-                    <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Tipo Sanguíneo</p>
-                    <p className={`font-bold text-[10px] ${isDarkTheme ? 'text-white/90' : 'text-gray-700'}`}>
-                      {formData.bloodType}
-                    </p>
-                  </div>
-                )}
-
-                {formData.medicalCondition && (
-                  <div className="mt-2">
-                    <p className={`text-[7px] uppercase tracking-wider ${textColorMuted}`}>Condição Autorizada</p>
-                    <p className={`text-[10px] font-semibold ${isDarkTheme ? 'text-emerald-300/90' : 'text-green-600'}`}>
-                      {formData.medicalCondition}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {CARD_FIELDS.qrCode && (
-                <div className="flex flex-col items-end justify-between">
-                  <div className={`p-1 ${bgAccent} rounded-md shadow-sm`}>
-                    <QRCodeCanvas
-                      value={qrCodeValue}
-                      size={44}
-                      bgColor={isDarkTheme ? "#ffffff" : "#f9f9f9"}
-                      fgColor={isDarkTheme ? "#063d2b" : "#333333"}
-                      level={"M"}
-                      includeMargin={false}
-                    />
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-[6px] uppercase tracking-wider ${textColorMuted}`}>
-                      greencard.club
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className={`flex justify-between items-center pt-1.5 mt-1 border-t ${isDarkTheme ? 'border-white/5' : 'border-gray-200'}`}>
-              <div className="flex items-center gap-2">
-                <Image
-                  src="/planta.svg"
-                  alt="Cannabis"
-                  width={14}
-                  height={14}
-                  className={isDarkTheme ? "opacity-30 brightness-0 invert" : "opacity-40"}
-                />
-                <p className={`text-[6px] uppercase tracking-wider ${textColorMuted}`}>
-                  Documento Digital
-                </p>
-              </div>
-              <p className={`text-[6px] ${textColorMuted}`}>© 2025</p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 };
@@ -637,7 +348,7 @@ const Notification: React.FC<NotificationProps> = ({ message, type, onClose }) =
     >
       <AlertCircle className="w-5 h-5" />
       <span>{message}</span>
-      <button onClick={onClose} className="ml-4">×</button>
+      <button onClick={onClose} className="ml-4 text-xl font-bold">×</button>
     </motion.div>
   );
 };
@@ -647,8 +358,6 @@ export default function CarterinhaPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showCard, setShowCard] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState<CardTheme>(CARD_THEMES[0]);
-  const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -675,15 +384,13 @@ export default function CarterinhaPage() {
 
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
-  const cardFrontRef = useRef<HTMLDivElement>(null);
-  const printFrontRef = useRef<HTMLDivElement>(null);
-  const printBackRef = useRef<HTMLDivElement>(null);
+  const hiddenCardRef = useRef<HTMLDivElement>(null); // Ref para o cartão oculto
   const cardNumber = useMemo(() => generateCardNumber(), []);
 
   const steps = [
     { id: 1, name: "Dados Pessoais", icon: User },
     { id: 2, name: "Dados Médicos", icon: FileText },
-    { id: 3, name: "Foto & Tema", icon: Camera },
+    { id: 3, name: "Sua Foto", icon: Camera },
     { id: 4, name: "Revisão", icon: Check },
     { id: 5, name: "Carteirinha", icon: Check },
   ];
@@ -750,120 +457,93 @@ export default function CarterinhaPage() {
     reader.readAsDataURL(file);
   };
 
-  // FUNÇÃO CORRIGIDA - Download PDF usando componentes de impressão separados
+  // Função para download PDF CORRIGIDA
   const handleDownloadPDF = useCallback(async () => {
     setIsGeneratingPDF(true);
-    setNotification({ message: "Gerando PDF para impressão duplex...", type: "warning" });
+    setNotification({ message: "Gerando PDF...", type: "warning" });
 
     try {
-      const scale = 4; // Alta resolução para impressão
+      // Aguarda renderização completa
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Aguarda um momento para os componentes renderizarem
-      await new Promise(resolve => setTimeout(resolve, 100));
+      const element = hiddenCardRef.current;
+      if (!element) throw new Error("Erro ao renderizar cartão");
       
-      // Captura a frente (usando o componente de impressão)
-      const frontElement = printFrontRef.current;
-      if (!frontElement) throw new Error("Erro ao renderizar frente do cartão");
-      
-      const frontDataUrl = await htmlToImage.toPng(frontElement, {
+      // Captura com configurações otimizadas
+      const dataUrl = await htmlToImage.toPng(element, {
         cacheBust: true,
-        pixelRatio: scale,
-        quality: 1
+        pixelRatio: 3,
+        quality: 1,
+        backgroundColor: '#ffffff',
+        width: 350,
+        height: 220
       });
 
-      // Captura o verso (usando o componente de impressão)
-      const backElement = printBackRef.current;
-      if (!backElement) throw new Error("Erro ao renderizar verso do cartão");
-      
-      const backDataUrl = await htmlToImage.toPng(backElement, {
-        cacheBust: true,
-        pixelRatio: scale,
-        quality: 1
-      });
-
-      // Cria o PDF no formato CR80 (cartão de crédito)
+      // Cria o PDF
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: [CARD_PRINT_CONFIG.heightMM, CARD_PRINT_CONFIG.widthMM]
       });
 
-      // Adiciona a frente (normal)
       pdf.addImage(
-        frontDataUrl, 
+        dataUrl, 
         'PNG', 
         0, 
         0, 
         CARD_PRINT_CONFIG.widthMM, 
-        CARD_PRINT_CONFIG.heightMM
+        CARD_PRINT_CONFIG.heightMM,
+        undefined,
+        'FAST'
       );
 
-      // Adiciona nova página para o verso
-      pdf.addPage();
-      
-      // Adiciona o verso (normal - sem espelhamento)
-      pdf.addImage(
-        backDataUrl, 
-        'PNG', 
-        0, 
-        0, 
-        CARD_PRINT_CONFIG.widthMM, 
-        CARD_PRINT_CONFIG.heightMM
-      );
-
-      // Adiciona metadados
-      pdf.setProperties({
-        title: `Carteirinha - ${formData.name || 'GreenCard'}`,
-        subject: 'Impressão Duplex - Zebra ZC300',
-        author: 'GreenCard Club',
-        keywords: `carteirinha, ${cardNumber}, duplex`,
-        creator: 'GreenCard System'
-      });
-
-      // Salva o PDF
       pdf.save(`carteirinha-${formData.name.split(' ')[0] || 'usuario'}-${cardNumber}.pdf`);
       
       setNotification({ 
-        message: "PDF gerado com sucesso! Pronto para impressão duplex.", 
+        message: "PDF gerado com sucesso!", 
         type: "success" 
       });
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
-      setNotification({ message: "Erro ao gerar PDF", type: "error" });
+      setNotification({ message: "Erro ao gerar PDF. Tente novamente.", type: "error" });
     } finally {
       setIsGeneratingPDF(false);
       setTimeout(() => setNotification(null), 5000);
     }
   }, [formData.name, cardNumber]);
 
-  // Função para download PNG (mantida para compatibilidade)
+  // Função para download PNG CORRIGIDA
   const handleDownloadPNG = useCallback(async () => {
-    if (cardRef.current === null) {
-      setNotification({ message: "Erro ao gerar imagem", type: "error" });
-      setTimeout(() => setNotification(null), 3000);
-      return;
-    }
-
     try {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const pixelRatio = isMobile ? 2 : 3;
+      setNotification({ message: "Gerando imagem...", type: "warning" });
       
-      const dataUrl = await htmlToImage.toPng(cardRef.current, {
+      // Aguarda renderização completa
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const element = hiddenCardRef.current;
+      if (!element) throw new Error("Erro ao renderizar cartão");
+      
+      const dataUrl = await htmlToImage.toPng(element, {
         cacheBust: true,
-        pixelRatio,
-        quality: 0.95
+        pixelRatio: 3,
+        quality: 0.95,
+        backgroundColor: '#ffffff',
+        width: 350,
+        height: 220
       });
       
       const link = document.createElement('a');
-      link.download = `carteirinha-verso-${formData.name.split(' ')[0] || 'usuario'}-${cardNumber}.png`;
+      link.download = `carteirinha-${formData.name.split(' ')[0] || 'usuario'}-${cardNumber}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       
       setNotification({ message: "Imagem baixada com sucesso!", type: "success" });
-      setTimeout(() => setNotification(null), 3000);
     } catch (err) {
       console.error('Erro ao gerar imagem:', err);
-      setNotification({ message: "Erro ao baixar imagem", type: "error" });
+      setNotification({ message: "Erro ao baixar imagem. Tente novamente.", type: "error" });
+    } finally {
       setTimeout(() => setNotification(null), 3000);
     }
   }, [formData.name, cardNumber]);
@@ -879,7 +559,6 @@ export default function CarterinhaPage() {
         body: JSON.stringify({ 
           ...formData, 
           password: finalPassword,
-          cardTheme: selectedTheme.name,
           cardNumber
         })
       });
@@ -894,7 +573,6 @@ export default function CarterinhaPage() {
             userId: data.id, 
             photoUrl: selectedImage,
             cardNumber,
-            theme: selectedTheme.name,
             additionalData: {
               nickname: formData.nickname,
               nationality: formData.nationality,
@@ -938,24 +616,14 @@ export default function CarterinhaPage() {
         />
       )}
 
-      {/* Componentes ocultos para impressão (SEM transformações 3D) */}
-      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-        <div ref={printFrontRef}>
-          <PrintCard
+      {/* Cartão oculto para exportação - SEMPRE RENDERIZADO */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={hiddenCardRef}>
+          <MedicalCard
             formData={formData}
             selectedImage={selectedImage}
-            theme={selectedTheme}
             cardNumber={cardNumber}
-            side="front"
-          />
-        </div>
-        <div ref={printBackRef}>
-          <PrintCard
-            formData={formData}
-            selectedImage={selectedImage}
-            theme={selectedTheme}
-            cardNumber={cardNumber}
-            side="back"
+            forExport={true}
           />
         </div>
       </div>
@@ -1310,89 +978,56 @@ export default function CarterinhaPage() {
             </div>
           )}
 
-          {/* PASSO 3: FOTO E TEMA */}
+          {/* PASSO 3: FOTO */}
           {currentStep === 3 && (
             <div>
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-greencard-primary mb-2">
-                Personalização
+                Adicione sua Foto
               </h2>
               <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
-                Adicione sua foto e escolha o tema da carteirinha
+                Faça upload de uma foto para personalizar sua carteirinha
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-greencard-primary mb-4">Sua Foto</h3>
-                  <label htmlFor="photo-upload" className="block cursor-pointer">
-                    <div className="border-2 border-dashed border-greencard-tertiary rounded-xl p-8 hover:border-greencard-primary transition-colors">
-                      {selectedImage ? (
-                        <div className="text-center">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={selectedImage} 
-                            alt="Preview" 
-                            className="w-24 h-24 object-cover rounded-lg mx-auto mb-3" 
-                          />
-                          <p className="text-greencard-primary font-semibold text-sm">
-                            Foto selecionada!
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Clique para trocar
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <Camera className="h-12 w-12 text-greencard-primary mx-auto mb-3" />
-                          <p className="text-sm text-gray-600">
-                            Clique para adicionar foto
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            JPG, PNG até 5MB
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </label>
-                  <input
-                    id="photo-upload"
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-greencard-primary mb-4">Tema do Cartão</h3>
-                  <div className="space-y-3">
-                    {CARD_THEMES.map((theme) => (
-                      <div
-                        key={theme.name}
-                        onClick={() => setSelectedTheme(theme)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          selectedTheme.name === theme.name
-                            ? 'border-greencard-primary bg-greencard-background/20'
-                            : 'border-gray-200 hover:border-greencard-tertiary'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${theme.frontBg}`} />
-                          <div>
-                            <p className="font-semibold text-sm">{theme.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {theme.name === 'Cannabis Medical' && 'Tema padrão médico'}
-                              {theme.name === 'Menta' && 'Tema verde menta suave'}
-                              {theme.name === 'White' && 'Tema clean minimalista'}
-                            </p>
-                          </div>
-                        </div>
+              <div className="max-w-md mx-auto">
+                <label htmlFor="photo-upload" className="block cursor-pointer">
+                  <div className="border-2 border-dashed border-greencard-tertiary rounded-xl p-12 hover:border-greencard-primary transition-colors">
+                    {selectedImage ? (
+                      <div className="text-center">
+                        <img 
+                          src={selectedImage} 
+                          alt="Preview" 
+                          className="w-32 h-32 object-cover rounded-lg mx-auto mb-4" 
+                        />
+                        <p className="text-greencard-primary font-semibold">
+                          Foto selecionada!
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Clique para trocar
+                        </p>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="text-center">
+                        <Camera className="h-16 w-16 text-greencard-primary mx-auto mb-4" />
+                        <p className="text-lg font-medium text-gray-700">
+                          Clique para adicionar sua foto
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          JPG, PNG até 5MB
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
+                </label>
+                <input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file);
+                  }}
+                />
               </div>
             </div>
           )}
@@ -1411,15 +1046,14 @@ export default function CarterinhaPage() {
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="font-semibold text-greencard-primary mb-4">Preview da Carteirinha</h3>
                   <div className="flex justify-center">
-                    <MedicalCard
-                      formData={formData}
-                      selectedImage={selectedImage}
-                      theme={selectedTheme}
-                      isFlipped={false}
-                      cardRef={cardRef}
-                      cardFrontRef={cardFrontRef}
-                      cardNumber={cardNumber}
-                    />
+                    <div ref={cardRef}>
+                      <MedicalCard
+                        formData={formData}
+                        selectedImage={selectedImage}
+                        cardNumber={cardNumber}
+                        forExport={false}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1484,70 +1118,11 @@ export default function CarterinhaPage() {
                     <Printer className="h-6 w-6 text-blue-600 mx-auto mb-2" />
                     <p className="text-blue-800 text-sm">
                       <strong>Impressão Profissional:</strong> O PDF está otimizado para impressoras de cartão PVC 
-                      como a Zebra ZC300 com suporte duplex.
+                      como a Zebra ZC300.
                     </p>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button 
-                      onClick={handleDownloadPDF} 
-                      disabled={isGeneratingPDF}
-                      className="bg-greencard-primary hover:bg-greencard-primary/90 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
-                    >
-                      {isGeneratingPDF ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                          Gerando PDF...
-                        </>
-                      ) : (
-                        <>
-                          <Printer className="h-5 w-5" />
-                          Baixar PDF (Impressão)
-                        </>
-                      )}
-                    </button>
-                    <button 
-                      onClick={handleDownloadPNG} 
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
-                    >
-                      <Download className="h-5 w-5" />
-                      Baixar Imagem
-                    </button>
-                    <button 
-                      onClick={() => { setShowCard(true); setIsFlipped(false); }} 
-                      className="bg-greencard-secondary hover:bg-greencard-secondary/90 text-greencard-primary font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
-                    >
-                      <Eye className="h-5 w-5" />
-                      Ver Carteirinha
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-greencard-primary mb-6">
-                    Sua Carteirinha Digital
-                  </h2>
-                  
-                  <div className="flex justify-center mb-6">
-                    <MedicalCard
-                      formData={formData}
-                      selectedImage={selectedImage}
-                      theme={selectedTheme}
-                      isFlipped={isFlipped}
-                      cardRef={cardRef}
-                      cardFrontRef={cardFrontRef}
-                      cardNumber={cardNumber}
-                    />
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button 
-                      onClick={() => setIsFlipped(!isFlipped)}
-                      className="bg-greencard-secondary hover:bg-greencard-secondary/90 text-greencard-primary font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
-                    >
-                      <RefreshCw className="h-5 w-5" />
-                      {isFlipped ? 'Ver Frente' : 'Ver Verso'}
-                    </button>
                     <button 
                       onClick={handleDownloadPDF} 
                       disabled={isGeneratingPDF}
@@ -1566,8 +1141,66 @@ export default function CarterinhaPage() {
                       )}
                     </button>
                     <button 
+                      onClick={handleDownloadPNG} 
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
+                    >
+                      <Download className="h-5 w-5" />
+                      Baixar Imagem
+                    </button>
+                    <button 
+                      onClick={() => setShowCard(true)} 
+                      className="bg-greencard-secondary hover:bg-greencard-secondary/90 text-greencard-primary font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
+                    >
+                      <Eye className="h-5 w-5" />
+                      Ver Carteirinha
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-greencard-primary mb-6">
+                    Sua Carteirinha Digital
+                  </h2>
+                  
+                  <div className="flex justify-center mb-6">
+                    <div ref={cardRef}>
+                      <MedicalCard
+                        formData={formData}
+                        selectedImage={selectedImage}
+                        cardNumber={cardNumber}
+                        forExport={false}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button 
+                      onClick={handleDownloadPDF} 
+                      disabled={isGeneratingPDF}
+                      className="bg-greencard-primary hover:bg-greencard-primary/90 disabled:opacity-50 text-white font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
+                    >
+                      {isGeneratingPDF ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                          Gerando PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Printer className="h-5 w-5" />
+                          Baixar PDF
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      onClick={handleDownloadPNG} 
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 justify-center"
+                    >
+                      <Download className="h-5 w-5" />
+                      Baixar Imagem
+                    </button>
+                    <button 
                       onClick={() => setShowCard(false)} 
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-6 py-3 rounded-full transition-colors"
+                      className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold px-6 py-3 rounded-full transition-colors"
                     >
                       Voltar
                     </button>

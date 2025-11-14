@@ -18,7 +18,7 @@ interface Card3DProps {
 export default function Card3D({ 
   name = "NOME DO USUÁRIO",
   cpf = "000.000.000-00",
-  validity = "12/2025",
+  validity = "12/2026",
   photoUrl,
   size = "md",
   interactive = true
@@ -104,7 +104,7 @@ export default function Card3D({
           <div className="flex justify-between items-start mb-8">
             <div>
               <p className="text-xs uppercase tracking-wider opacity-80 mb-1">Carteira Digital</p>
-              <h3 className="text-2xl font-black">GREENCARD</h3>
+              <h3 className="text-2xl font-black">GREENCARD CLUB</h3>
               <span className="text-greencard-secondary text-xl italic">club</span>
             </div>
             <motion.div 

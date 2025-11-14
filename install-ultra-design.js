@@ -255,7 +255,7 @@ export default function Home() {
                           </div>
                           <div className="text-right">
                             <p className="text-white/60 text-xs">VÁLIDA ATÉ</p>
-                            <p className="text-white font-bold">12/2025</p>
+                            <p className="text-white font-bold">12/2026</p>
                             <div className="flex items-center gap-1 mt-1">
                               <motion.div
                                 animate={{ scale: [1, 1.2, 1] }}
